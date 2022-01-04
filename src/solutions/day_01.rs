@@ -1,12 +1,10 @@
-use std::fs;
+use crate::input;
 
 pub fn run() {
-    println!("Day 1");
+    let input = input::read_all("01").expect("input file not found");
 
-    let input = fs::read_to_string("input/day_01.txt").expect("input file not found");
-
-    println!("  part 1: {}", count_floor(&input));
-    println!("  part 2: {}", enters_basement(&input));
+    println!(" part 1: {}", count_floor(&input));
+    println!(" part 2: {}", enters_basement(&input));
 }
 
 fn count_floor(input: &str) -> i32 {
