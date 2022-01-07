@@ -20,7 +20,7 @@ impl Add for Point {
 }
 
 pub fn run() {
-    let input = input::read_all("03").expect("input file not found");
+    let input = input::read_all("2015_03").expect("input file not found");
 
     let mut year1_visited: HashSet<Point> = HashSet::new();
     let mut year1_position = Point(0, 0);

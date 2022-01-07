@@ -1,7 +1,7 @@
 use crate::input;
 
 pub fn run() {
-    let lines = input::read_lines("02")
+    let lines = input::read_lines("2015_02")
         .expect("Couldn't read input");
 
     let mut total_paper: i32 = 0;

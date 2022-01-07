@@ -1,7 +1,7 @@
 use crate::input;
 
 pub fn run() {
-    let input = input::read_all("01").expect("input file not found");
+    let input = input::read_all("2015_01").expect("input file not found");
 
     println!(" part 1: {}", count_floor(&input));
     println!(" part 2: {}", enters_basement(&input));

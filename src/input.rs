@@ -16,5 +16,5 @@ pub fn read_all(day: &str) -> Result<String> {
 }
 
 fn filename(day: &str) -> String {
-    format!("input/day_{}.txt", day)
+    format!("input/{}.txt", day)
 }
