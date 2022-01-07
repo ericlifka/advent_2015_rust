@@ -1,7 +1,7 @@
 mod input;
 mod solutions;
 
-use solutions::{day_01,day_02,day_03,day_04};
+use solutions::year_2015;
 use std::{env, time::Instant};
 
 
@@ -21,11 +21,12 @@ fn main() {
 fn run_day(day: &str) {
     println!("\n-- Day {}", day);
 
+    // TODO: come up with something more dynamic for this
     match day {
-        "1" => day_01::run(),
-        "2" => day_02::run(),
-        "3" => day_03::run(),
-        "4" => day_04::run(),
+        "2015:1" => year_2015::day_01::run(),
+        "2015:2" => year_2015::day_02::run(),
+        "2015:3" => year_2015::day_03::run(),
+        "2015:4" => year_2015::day_04::run(),
         _ => println!("Can't run unrecognized day '{}'", day)
     }
 
