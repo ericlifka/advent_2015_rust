@@ -19,7 +19,6 @@ impl Add<u64> for Bit {
 enum Packet {
     Literal {
         version: u64,
-        type_id: u64,
         value: u64
     },
     Operator {
@@ -104,7 +103,6 @@ fn parse_packet(bits: &mut VecDeque<Bit>) -> Packet {
     match type_id {
         4 => Packet::Literal {
             version,
-            type_id,
             value: pull_literal_val(bits),
         },
 
