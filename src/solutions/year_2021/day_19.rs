@@ -2,6 +2,13 @@ use std::ops::{Sub,Not,Add};
 use std::cmp::{Ordering,PartialOrd};
 use crate::input;
 
+/*
+Performance improvement ideas:
+  2. Don't recalculate whole identity when adding beacons
+  3. Don't do whole calculation twice to determine orientation, pick one early
+  4. Use sets for beacons?
+*/
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Point {
     x: i32,
@@ -174,6 +181,15 @@ impl Scanner {
         }
     }
 
+    fn world() -> Scanner {
+        Scanner {
+            name: String::from("world"),
+            beacons: Vec::new(),
+            identity: Vec::new(),
+            matches_with_world: 0
+        }
+    }
+
     fn calc_identity(beacons: &Vec<Point>) -> Vec<PointVector> {
         let mut identity: Vec<PointVector> = Vec::new();
         for j in 0..(beacons.len() - 1) {
@@ -190,15 +206,28 @@ impl Scanner {
     fn compare_to(&self, other: &Self) -> Vec<(PointVector, PointVector)> {
         let mut matches: Vec<(PointVector, PointVector)> = Vec::new();
 
-        for left in self.identity.iter() {
-            for right in other.identity.iter() {
-                if left == right {
-                    matches.push((*left, *right));
+        let mut left_vectors = self.identity.iter();
+        let mut left_current = left_vectors.next();
+
+        let mut right_vectors = other.identity.iter();
+        let mut right_current = right_vectors.next();
+
+        loop {
+            match both(left_current, right_current) {
+                None => return matches,
+                Some((&left, &right)) => {
+                    if left < right {
+                        left_current = left_vectors.next();
+                    } else if right < left {
+                        right_current = right_vectors.next();
+                    } else {
+                        matches.push( (left, right) );
+                        left_current = left_vectors.next();
+                        right_current = right_vectors.next();
+                    }
                 }
             }
         }
-
-        matches
     }
 
     fn unique_beacons(&mut self, scanner: &Scanner, transformer: Box<dyn Transformer>) -> Vec<Point> {
@@ -225,10 +254,13 @@ impl Scanner {
 
     fn add_beacons(&mut self, beacons: Vec<Point>) {
         for beacon in beacons {
+            for &other in self.beacons.iter() {
+                self.identity.push(PointVector::from_subtract(beacon, other));
+            }
             self.beacons.push(beacon);
         }
 
-        self.identity = Self::calc_identity(&self.beacons);
+        self.identity.sort();
     }
 }
 
@@ -314,13 +346,11 @@ impl TransformerChain {
 }
 
 pub fn run() {
-    let mut global_scanner = Scanner { name: String::from("world"), beacons: Vec::new(), identity: Vec::new(), matches_with_world: 0 };
+    let mut global_scanner = Scanner::world();
     let mut scanners: Vec<Scanner> = get_input();
-    let mut scanner_locs: Vec<Point> = vec![Point { x: 0, y: 0, z: 0 }];
     let scanner_0 = scanners.remove(0);
+    let mut scanner_locs: Vec<(Point, String)> = vec![(Point { x: 0, y: 0, z: 0 }, scanner_0.name)];
     global_scanner.add_beacons(scanner_0.beacons);
-
-    println!("\nGlobal scanner before adding:\n  {}: {} beacons\n", global_scanner.name, global_scanner.beacons.len());
 
     while scanners.len() > 0 {
         sort_scanners(&global_scanner, &mut scanners);
@@ -328,7 +358,6 @@ pub fn run() {
         let scanner = scanners.remove(0);
         let mut matches = scanner.compare_to(&global_scanner);
 
-        println!("Comparing {} to global coords - {} matches", scanner.name, matches.len());
         let first_match = matches.remove(0);
         
         let rotate_1 = Rotation::rotate_to(first_match.0.vec, first_match.1.vec);
@@ -351,26 +380,33 @@ pub fn run() {
 
         if r1_unique.len() < r2_unique.len() {
             global_scanner.add_beacons(r1_unique);
-            scanner_locs.push(r1_scanner_loc);
+            scanner_locs.push((r1_scanner_loc, String::from(scanner.name)));
         } else {
             global_scanner.add_beacons(r2_unique);
-            scanner_locs.push(r2_scanner_loc);
+            scanner_locs.push((r2_scanner_loc, String::from(scanner.name)));
         }
-
-        println!("\nGlobal beacon list: {} beacons\n", global_scanner.beacons.len());
     }
 
-    let mut max = 0;
-    for &s1 in scanner_locs.iter() {
-        for &s2 in scanner_locs.iter() {
-            let len = PointVector::from_subtract(s1, s2).len;
-            if len > max {
-                max = len;
+    println!("  Part 1: {} beacons", global_scanner.beacons.len());
+
+    let mut max = (0, &String::from("scanner 0"), &String::from("scanner 0"));
+    for (s1, s1name) in scanner_locs.iter() {
+        for (s2, s2name) in scanner_locs.iter() {
+            let len = PointVector::from_subtract(*s1, *s2).len;
+            if len > max.0 {
+                max = (len, s1name, s2name);
             }
         }
     }
 
-    println!("Farthest distance between scanners: {}", max);
+    println!("  Part 2: {} units, between scanner {} and {}", max.0, max.1, max.2);
+}
+
+fn both<T>(left: Option<T>, right: Option<T>) -> Option<(T, T)> {
+    match left  { None => None, Some(left) =>
+    match right { None => None, Some(right) =>
+        Some((left, right))
+    }}
 }
 
 fn scanner_location(global_points: [Point; 2], scanner_points: [Point; 2]) -> Point {
@@ -400,8 +436,6 @@ fn sort_scanners(global_scanner: &Scanner, scanners: &mut Vec<Scanner>) {
         }
     });
 }
-
-fn sqr(x: f64) -> f64 { x * x }
 
 fn get_input() -> Vec<Scanner> {
     let input = input::read_all("2021_19")
