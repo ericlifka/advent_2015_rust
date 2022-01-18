@@ -2,13 +2,6 @@ use std::ops::{Sub,Not,Add};
 use std::cmp::{Ordering,PartialOrd};
 use crate::input;
 
-/*
-Performance improvement ideas:
-  2. Don't recalculate whole identity when adding beacons
-  3. Don't do whole calculation twice to determine orientation, pick one early
-  4. Use sets for beacons?
-*/
-
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Point {
     x: i32,
@@ -181,15 +174,6 @@ impl Scanner {
         }
     }
 
-    fn world() -> Scanner {
-        Scanner {
-            name: String::from("world"),
-            beacons: Vec::new(),
-            identity: Vec::new(),
-            matches_with_world: 0
-        }
-    }
-
     fn calc_identity(beacons: &Vec<Point>) -> Vec<PointVector> {
         let mut identity: Vec<PointVector> = Vec::new();
         for j in 0..(beacons.len() - 1) {
@@ -222,6 +206,7 @@ impl Scanner {
                         right_current = right_vectors.next();
                     } else {
                         matches.push( (left, right) );
+
                         left_current = left_vectors.next();
                         right_current = right_vectors.next();
                     }
@@ -230,7 +215,7 @@ impl Scanner {
         }
     }
 
-    fn unique_beacons(&mut self, scanner: &Scanner, transformer: Box<dyn Transformer>) -> Vec<Point> {
+    fn add_unique_beacons(&mut self, scanner: &Scanner, transformer: Box<dyn Transformer>) {
         let mut unique_beacons: Vec<Point> = Vec::new();
 
         for &beacon in scanner.beacons.iter() {
@@ -249,11 +234,7 @@ impl Scanner {
             }
         }
 
-        unique_beacons
-    }
-
-    fn add_beacons(&mut self, beacons: Vec<Point>) {
-        for beacon in beacons {
+        for beacon in unique_beacons {
             for &other in self.beacons.iter() {
                 self.identity.push(PointVector::from_subtract(beacon, other));
             }
@@ -266,6 +247,9 @@ impl Scanner {
 
 trait Transformer {
     fn transform(&self, point: Point) -> Point;
+    fn transform_all(&self, points: &Vec<Point>) -> Vec<Point> {
+        points.iter().map(|&p| self.transform(p)).collect::<Vec<Point>>()
+    }
 }
 
 struct Rotation {
@@ -346,45 +330,40 @@ impl TransformerChain {
 }
 
 pub fn run() {
-    let mut global_scanner = Scanner::world();
     let mut scanners: Vec<Scanner> = get_input();
-    let scanner_0 = scanners.remove(0);
-    let mut scanner_locs: Vec<(Point, String)> = vec![(Point { x: 0, y: 0, z: 0 }, scanner_0.name)];
-    global_scanner.add_beacons(scanner_0.beacons);
+    let mut global_scanner = scanners.remove(0);
+    let mut scanner_locs: Vec<(Point, String)> = vec![
+        (Point { x: 0, y: 0, z: 0 }, String::from(&global_scanner.name))
+    ];
 
     while scanners.len() > 0 {
         sort_scanners(&global_scanner, &mut scanners);
 
         let scanner = scanners.remove(0);
         let mut matches = scanner.compare_to(&global_scanner);
+        let m1 = matches.remove(0);
+        let m2 = matches.remove(0);
+        let mut rotate = Rotation::rotate_to(m1.0.vec, m1.1.vec);
+        let s_points = vec![m1.0.points[0], m1.0.points[1], m2.0.points[0], m2.0.points[1]];
+        let w_points = vec![m1.1.points[0], m1.1.points[1], m2.1.points[0], m2.1.points[1]];
 
-        let first_match = matches.remove(0);
-        
-        let rotate_1 = Rotation::rotate_to(first_match.0.vec, first_match.1.vec);
-        let rotate_2 = Rotation::rotate_to(first_match.0.vec, !first_match.1.vec);
+        let scanner_location = match scanner_location(&w_points, rotate.transform_all(&s_points)) {
+            Some(location) => location,
+            None => {
+                rotate = Rotation::rotate_to(m1.0.vec, !m1.1.vec);
 
-        let r1_p1 = rotate_1.transform(first_match.0.points[0]);
-        let r1_p2 = rotate_1.transform(first_match.0.points[1]);
+                match scanner_location(&w_points, rotate.transform_all(&s_points)) {
+                    Some(location) => location,
+                    None => panic!("Couldn't establish rotation")
+                }
+            }
+        };
 
-        let r2_p1 = rotate_2.transform(first_match.0.points[0]);
-        let r2_p2 = rotate_2.transform(first_match.0.points[1]);
-
-        let r1_scanner_loc = scanner_location(first_match.1.points, [ r1_p1, r1_p2 ]);
-        let r2_scanner_loc = scanner_location(first_match.1.points, [ r2_p1, r2_p2 ]);
-
-        let r1_transform = TransformerChain::new(vec![rotate_1, Translation::translate_to(r1_scanner_loc)]);
-        let r2_transform = TransformerChain::new(vec![rotate_2, Translation::translate_to(r2_scanner_loc)]);
-        
-        let r1_unique = global_scanner.unique_beacons(&scanner, r1_transform);
-        let r2_unique = global_scanner.unique_beacons(&scanner, r2_transform);
-
-        if r1_unique.len() < r2_unique.len() {
-            global_scanner.add_beacons(r1_unique);
-            scanner_locs.push((r1_scanner_loc, String::from(scanner.name)));
-        } else {
-            global_scanner.add_beacons(r2_unique);
-            scanner_locs.push((r2_scanner_loc, String::from(scanner.name)));
-        }
+        scanner_locs.push((scanner_location, String::from(&scanner.name)));
+        global_scanner.add_unique_beacons(&scanner, TransformerChain::new(vec![
+            rotate,
+            Translation::translate_to(scanner_location)
+        ]));
     }
 
     println!("  Part 1: {} beacons", global_scanner.beacons.len());
@@ -409,15 +388,33 @@ fn both<T>(left: Option<T>, right: Option<T>) -> Option<(T, T)> {
     }}
 }
 
-fn scanner_location(global_points: [Point; 2], scanner_points: [Point; 2]) -> Point {
+fn scanner_location(global_points: &Vec<Point>,
+                    scanner_points: Vec<Point>) -> Option<Point> {
+
     let opt_1 = global_points[0] - scanner_points[0];
     let opt_2 = global_points[1] - scanner_points[1];
     
-    if opt_1 == opt_2 {
-        opt_1
-    } else {
-        global_points[0] - scanner_points[1]
+    let location = 
+        if opt_1 == opt_2 {
+            opt_1 
+        } else {
+            global_points[0] - scanner_points[1]
+        };
 
+    let alt_1 = global_points[2] - scanner_points[2];
+    let alt_2 = global_points[3] - scanner_points[3];
+
+    let validation = 
+        if alt_1 == alt_2 {
+            alt_1
+        } else {
+            global_points[2] - scanner_points[3]
+        };
+
+    if location == validation {
+        Some(location)
+    } else {
+        None
     }
 }
 
