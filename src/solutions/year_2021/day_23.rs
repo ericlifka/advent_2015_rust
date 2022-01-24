@@ -84,7 +84,7 @@ struct Board {
 
 impl Display for Board {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "\n-------------\n| e: {}\n|-----------|\n|{}{}{}{}{}{}{}{}{}{}{}|\n--|{}|{}|{}|{}|--\n  |{}|{}|{}|{}|\n  |{}|{}|{}|{}|\n  |{}|{}|{}|{}|\n  ---------\n", 
+        write!(f, "\n╔═══════════╗\n║e:{:#9}║\n╠═══════════╣\n║{}{}{}{}{}{}{}{}{}{}{}║\n╚═╣{}║{}║{}║{}╠═╝\n  ║{}║{}║{}║{}║\n  ║{}║{}║{}║{}║\n  ║{}║{}║{}║{}║\n  ╚═╩═╩═╩═╝\n", 
             self.energy,
         
             self.space[0], self.space[1], self.space[2], self.space[3], self.space[4], self.space[5],
@@ -99,14 +99,6 @@ impl Display for Board {
 }
 
 impl Board {
-    // fn moves_for(&self, target: usize) -> Vec<Board> {
-    //     let mut moves = Vec::new();
-
-
-
-    //     moves
-    // }
-
     fn move_pod(&self, start: usize, end: usize) -> Option<Board> {
         use Pod::*;
 
@@ -117,6 +109,10 @@ impl Board {
 
         if let Empty = moving_pod { // can't move if there's no pod there
             println!("target starting space was empty");
+            return None;
+        }
+        if from == to {
+            println!("starting and ending space were the same");
             return None;
         }
         if from < 11 && to < 11 { // a piece can't move from the hallway to another spot in the hallway
@@ -225,6 +221,24 @@ impl Board {
 
         Some(board)
     }
+
+    fn get_all_possible_moves(&self) -> Vec<Board> {
+        let mut moves = Vec::new();
+
+        for start in 0..27 {
+            if self.space[start].occupied() {
+                for end in 0..27 {
+                    if start != end {
+                        if let Some(new_position) = self.move_pod(start, end) {
+                            moves.push(new_position);
+                        }
+                    }
+                }
+            }
+        }
+
+        moves
+    }
 }
 
 pub fn run() {
@@ -233,15 +247,12 @@ pub fn run() {
 
     println!("{}", board);
 
-    let mut new_board = board.move_pod(23, 0).unwrap();
+    let opening_moves = board.get_all_possible_moves();
 
-    println!("{}", new_board);
-
-    new_board = new_board.move_pod(11, 10).unwrap();
-    // new_board = new_board.move_pod(0, 11).unwrap();
-    // new_board = new_board.move_pod(10, 26).unwrap();
-
-    println!("{}", new_board);
+    for board in opening_moves.iter() {
+        println!("{}", board);
+    }
+    println!("\nFound {} opening moves", opening_moves.len());
 }
 
 fn starting_board() -> Board {
