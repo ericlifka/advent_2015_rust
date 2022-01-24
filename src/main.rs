@@ -33,6 +33,7 @@ fn run_problem(problem: &str) {
         "2021:17" => year_2021::day_17::run(),
         "2021:19" => year_2021::day_19::run(),
         "2021:22" => year_2021::day_22::run(),
+        "2021:23" => year_2021::day_23::run(),
 
         _ => println!("Can't run unrecognized problem '{}'", problem)
     }
