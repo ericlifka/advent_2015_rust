@@ -52,12 +52,19 @@ impl Pod {
     fn empty(&self) -> bool {
         match self {
             Empty => true,
-            A | B | C | D => false,
+            _ => false,
         }
     }
 
     fn occupied(&self) -> bool {
         !self.empty()
+    }
+
+    fn occupant(self) -> Option<Pod> {
+        match self {
+            Empty => None,
+            _ => Some(self),
+        }
     }
 }
 
@@ -178,6 +185,13 @@ impl Board {
         None
     }
 
+    fn move_to_home(&self, start: usize) -> Option<Board> {
+        self.space[start]
+            .occupant()
+            .and_then(|pod| self.get_home_slot(pod))
+            .and_then(|target| self.move_pod(start, target))
+    }
+
     fn get_next_to_leave(&self, home_type: Pod) -> Option<usize> {
         let (state, indexes) = match home_type {
             A => (self.a_home, 11..15),
@@ -201,36 +215,32 @@ impl Board {
     fn get_all_possible_moves(mut board: Board) -> VecDeque<Board> {
         let mut changed = false;
 
-        for i in 0..11 { match i {
-            2 | 4 | 6 | 8 => {},
-            _ => if let Some(target) = board.get_home_slot(board.space[i]) {
-                if let Some(new_board) = board.move_pod(i, target) {
-                    board = new_board;
-                    changed = true;
-                }
-            }}
+        for i in 0..11 {
+            if let Some(new_board) = board.move_to_home(i) {
+                board = new_board;
+                changed = true;
+            }
         }
 
         for home_type in [A, B, C, D] {
-            if let Some(start) = board.get_next_to_leave(home_type) {
-                if let Some(target) = board.get_home_slot(board.space[start]) {
-                    if let Some(new_board) = board.move_pod(start, target) {
-                        board = new_board;
-                        changed = true;
-                    }
-                }
+            let move_attempt = board.get_next_to_leave(home_type)
+                                    .and_then(|start| board.move_to_home(start));
+
+            if let Some(new_board) = move_attempt {
+                board = new_board;
+                changed = true;
             }
         }
 
         let mut moves = VecDeque::new();
+        
         for home_type in [A, B, C, D] {
             if let Some(start) = board.get_next_to_leave(home_type) {
-                for i in 0..11 { match i {
-                    2 | 4 | 6 | 8 => {},
-                    _ => if let Some(board) = board.move_pod(start, i) {
+                for i in [0, 1, 3, 5, 7, 9, 10] {
+                    if let Some(board) = board.move_pod(start, i) {
                         moves.push_back(board);
                     }
-                }}
+                }
             }
         }
 
