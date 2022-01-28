@@ -23,10 +23,10 @@ fn run_problem(problem: &str) {
 
     // TODO: come up with something more dynamic for this
     match problem {
-        "2015:1" => year_2015::day_01::run(),
-        "2015:2" => year_2015::day_02::run(),
-        "2015:3" => year_2015::day_03::run(),
-        "2015:4" => year_2015::day_04::run(),
+        "2015:1"  => year_2015::day_01::run(),
+        "2015:2"  => year_2015::day_02::run(),
+        "2015:3"  => year_2015::day_03::run(),
+        "2015:4"  => year_2015::day_04::run(),
 
         "2021:15" => year_2021::day_15::run(),
         "2021:16" => year_2021::day_16::run(),
@@ -34,6 +34,7 @@ fn run_problem(problem: &str) {
         "2021:19" => year_2021::day_19::run(),
         "2021:22" => year_2021::day_22::run(),
         "2021:23" => year_2021::day_23::run(),
+        "2021:24" => year_2021::day_24::run(),
 
         _ => println!("Can't run unrecognized problem '{}'", problem)
     }
