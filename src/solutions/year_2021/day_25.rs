@@ -161,7 +161,7 @@ fn print_sea_floor(floor: &SeaFloor) {
     println!("");
 }
 
-fn calc_input_size() {
-    let lines = input::read_lines("2021_25").expect("couldn't load input");
-    println!("Width: {}, Height: {}", lines[0].len(), lines.len());
-}
+// fn calc_input_size() {
+//     let lines = input::read_lines("2021_25").expect("couldn't load input");
+//     println!("Width: {}, Height: {}", lines[0].len(), lines.len());
+// }

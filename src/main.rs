@@ -27,6 +27,7 @@ fn run_problem(problem: &str) {
         "2015:2"  => year_2015::day_02::run(),
         "2015:3"  => year_2015::day_03::run(),
         "2015:4"  => year_2015::day_04::run(),
+        "2015:6"  => year_2015::day_06::run(),
 
         "2021:15" => year_2021::day_15::run(),
         "2021:16" => year_2021::day_16::run(),
