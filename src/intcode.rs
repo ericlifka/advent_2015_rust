@@ -43,7 +43,6 @@ impl IntcodeComputer {
                 self.instruction_ptr = saved.instruction_ptr;
             },
         }
-
     }
 
     pub fn lookup(&self, index: i64) -> i64 {
@@ -78,27 +77,32 @@ impl IntcodeComputer {
 
     fn run_instruction(&mut self) -> bool {
         let ptr = self.instruction_ptr;
+        let instruction = self.lookup(ptr);
+        let opcode = instruction % 100;
+        let modes = instruction / 100;
 
-        match self.lookup(ptr) {
+        match opcode {
             1 => {
-                let (in1, in2, out) = self.lookup_3(ptr + 1);
+                let (p1, p2, p3) = self.lookup_3(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
 
-                let lval = self.lookup(in1);
-                let rval = self.lookup(in2);
+                let lval = if m1 == 1 { p1 } else { self.lookup(p1) };
+                let rval = if m2 == 1 { p2 } else { self.lookup(p2) };
                 let result = lval + rval;
 
-                self.set(out, result);
+                self.set(p3, result);
                 self.instruction_ptr += 4;
             },
 
             2 => {
-                let (in1, in2, out) = self.lookup_3(ptr + 1);
+                let (p1, p2, p3) = self.lookup_3(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
 
-                let lval = self.lookup(in1);
-                let rval = self.lookup(in2);
+                let lval = if m1 == 1 { p1 } else { self.lookup(p1) };
+                let rval = if m2 == 1 { p2 } else { self.lookup(p2) };
                 let result = lval * rval;
 
-                self.set(out, result);
+                self.set(p3, result);
                 self.instruction_ptr += 4;
             },
 
@@ -108,4 +112,12 @@ impl IntcodeComputer {
 
         true
     }
+}
+
+fn calc_two_modes(mut modes: i64) -> (i64, i64) {
+    let m1 = modes % 10;
+    modes = modes / 10;
+    let m2 = modes % 10;
+
+    (m1, m2)
 }
