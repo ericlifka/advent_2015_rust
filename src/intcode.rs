@@ -78,6 +78,13 @@ impl IntcodeComputer {
         output
     }
 
+    fn lookup_2(&self, start: i64) -> (i64, i64) {
+        let one = self.lookup(start);
+        let two = self.lookup(start + 1);
+
+        (one, two)
+    }
+
     fn lookup_3(&self, start: i64) -> (i64, i64, i64) {
         let one = self.lookup(start);
         let two = self.lookup(start + 1);
@@ -111,7 +118,7 @@ impl IntcodeComputer {
         }
 
         match opcode {
-            1 => {
+            1 => {  // add
                 let (p1, p2, p3) = self.lookup_3(ptr + 1);
                 let (m1, m2) = calc_two_modes(modes);
 
@@ -123,7 +130,7 @@ impl IntcodeComputer {
                 self.instruction_ptr += 4;
             },
 
-            2 => {
+            2 => {  // multiply
                 let (p1, p2, p3) = self.lookup_3(ptr + 1);
                 let (m1, m2) = calc_two_modes(modes);
 
@@ -135,7 +142,7 @@ impl IntcodeComputer {
                 self.instruction_ptr += 4;
             },
 
-            3 => {
+            3 => {  // read input
                 let input = self.input_buffer.remove(0);
                 let p1 = self.lookup(ptr + 1);
 
@@ -143,7 +150,7 @@ impl IntcodeComputer {
                 self.instruction_ptr += 2;
             },
 
-            4 => {
+            4 => {  // print output
                 let p1 = self.lookup(ptr + 1);
                 let m1 = calc_one_mode(modes);
 
@@ -151,6 +158,56 @@ impl IntcodeComputer {
 
                 self.output_buffer.push(val);
                 self.instruction_ptr += 2;
+            },
+
+            5 => {  // jump if true
+                let (p1, p2) = self.lookup_2(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
+
+                let v1 = if m1 == 1 { p1 } else { self.lookup(p1) };
+
+                self.instruction_ptr = if v1 > 0 {
+                    if m2 == 1 { p2 } else { self.lookup(p2) }
+                } else {
+                    self.instruction_ptr + 3
+                };
+            },
+
+            6 => {  // jump if false
+                let (p1, p2) = self.lookup_2(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
+
+                let v1 = if m1 == 1 { p1 } else { self.lookup(p1) };
+
+                self.instruction_ptr = if v1 == 0 {
+                    if m2 == 1 { p2 } else { self.lookup(p2) }
+                } else {
+                    self.instruction_ptr + 3
+                };
+            },
+
+            7 => {  // less than
+                let (p1, p2, p3) = self.lookup_3(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
+
+                let lval = if m1 == 1 { p1 } else { self.lookup(p1) };
+                let rval = if m2 == 1 { p2 } else { self.lookup(p2) };
+                let result = if lval < rval { 1 } else { 0 };
+
+                self.set(p3, result);
+                self.instruction_ptr += 4;
+            },
+
+            8 => {  // equal to
+                let (p1, p2, p3) = self.lookup_3(ptr + 1);
+                let (m1, m2) = calc_two_modes(modes);
+
+                let lval = if m1 == 1 { p1 } else { self.lookup(p1) };
+                let rval = if m2 == 1 { p2 } else { self.lookup(p2) };
+                let result = if lval == rval { 1 } else { 0 };
+
+                self.set(p3, result);
+                self.instruction_ptr += 4;
             },
 
             99 => return false,
