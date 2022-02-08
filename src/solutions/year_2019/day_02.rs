@@ -1,10 +1,7 @@
 use crate::intcode::IntcodeComputer;
 
-
 pub fn run() {
-    println!("2019:2");
-
-    let mut computer = IntcodeComputer::new();
+    let mut computer = IntcodeComputer::new(false);
 
     computer.load_program("2019_02");
     computer.capture_state();

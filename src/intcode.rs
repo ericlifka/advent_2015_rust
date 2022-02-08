@@ -4,15 +4,22 @@ use crate::input;
 pub struct IntcodeComputer {
     memory: Vec<i64>,
     instruction_ptr: i64,
+    input_buffer: Vec<i64>,
+    output_buffer: Vec<i64>,
+
     save_state: Option<Box<IntcodeComputer>>,
+    debug: bool,
 }
 
 impl IntcodeComputer {
-    pub fn new() -> IntcodeComputer {
+    pub fn new(debug: bool) -> IntcodeComputer {
         IntcodeComputer {
             memory: Vec::new(),
             instruction_ptr: 0,
+            input_buffer: Vec::new(),
+            output_buffer: Vec::new(),
             save_state: None,
+            debug,
         }
     }
 
@@ -28,7 +35,10 @@ impl IntcodeComputer {
         self.save_state = Some(Box::new(IntcodeComputer {
             memory: self.memory.to_vec(),
             instruction_ptr: self.instruction_ptr,
+            input_buffer: self.input_buffer.to_vec(),
+            output_buffer: self.output_buffer.to_vec(),
             save_state: None,
+            debug: false,
         }));
     }
 
@@ -37,10 +47,14 @@ impl IntcodeComputer {
             None => {
                 self.memory = Vec::new();
                 self.instruction_ptr = 0;
+                self.input_buffer = Vec::new();
+                self.output_buffer = Vec::new();
             },
             Some(saved) => {
                 self.memory = saved.memory.to_vec();
                 self.instruction_ptr = saved.instruction_ptr;
+                self.input_buffer = saved.input_buffer.to_vec();
+                self.output_buffer = saved.output_buffer.to_vec();
             },
         }
     }
@@ -53,7 +67,18 @@ impl IntcodeComputer {
         self.memory[index as usize]
     }
 
-    pub fn lookup_3(&self, start: i64) -> (i64, i64, i64) {
+    pub fn add_to_input_buffer(&mut self, input: i64) {
+        self.input_buffer.push(input);
+    }
+
+    pub fn empty_output_buffer(&mut self) -> Vec<i64> {
+        let output = self.output_buffer.to_vec();
+        self.output_buffer = Vec::new();
+
+        output
+    }
+
+    fn lookup_3(&self, start: i64) -> (i64, i64, i64) {
         let one = self.lookup(start);
         let two = self.lookup(start + 1);
         let thr = self.lookup(start + 2);
@@ -81,6 +106,10 @@ impl IntcodeComputer {
         let opcode = instruction % 100;
         let modes = instruction / 100;
 
+        if self.debug {
+            println!("{}: {}", ptr, instruction);
+        }
+
         match opcode {
             1 => {
                 let (p1, p2, p3) = self.lookup_3(ptr + 1);
@@ -106,12 +135,34 @@ impl IntcodeComputer {
                 self.instruction_ptr += 4;
             },
 
+            3 => {
+                let input = self.input_buffer.remove(0);
+                let p1 = self.lookup(ptr + 1);
+
+                self.set(p1, input);
+                self.instruction_ptr += 2;
+            },
+
+            4 => {
+                let p1 = self.lookup(ptr + 1);
+                let m1 = calc_one_mode(modes);
+
+                let val = if m1 == 1 { p1 } else { self.lookup(p1) };
+
+                self.output_buffer.push(val);
+                self.instruction_ptr += 2;
+            },
+
             99 => return false,
             _  => panic!("Unexpected opcode"),
         }
 
         true
     }
+}
+
+fn calc_one_mode(modes: i64) -> i64 {
+    modes % 10
 }
 
 fn calc_two_modes(mut modes: i64) -> (i64, i64) {
